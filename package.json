@@ -15,7 +15,11 @@
     "dist": "npm run build && electron-builder",
     "test:live": "node tests/live.cjs",
     "test:pack": "node tests/pack-live.cjs",
-    "test:news": "npm run build && node tests/news-ui.cjs"
+    "test:news": "npm run build && node tests/news-ui.cjs",
+    "dist:win": "npm run build && electron-builder --win --x64 --publish never",
+    "dist:mac": "npm run build && electron-builder --mac --x64 --arm64 --publish never",
+    "dist:linux": "npm run build && electron-builder --linux --x64 --publish never",
+    "dist:flatpak": "npm run build && electron-builder --linux flatpak --x64 --publish never && node scripts/flatpak-repository.cjs"
   },
   "dependencies": {
     "adm-zip": "^0.6.0",
@@ -49,23 +53,51 @@
     },
     "linux": {
       "target": [
-        "AppImage"
+        "AppImage",
+        "deb",
+        "rpm",
+        "flatpak",
+        "snap"
       ],
       "category": "Game",
-      "syncDesktopName": true
+      "syncDesktopName": true,
+      "maintainer": "R1FT <r1fttt@users.noreply.github.com>"
     },
     "win": {
       "target": [
-        "nsis"
+        "nsis",
+        "msi"
       ]
     },
     "mac": {
       "target": [
-        "dmg"
+        "dmg",
+        "pkg"
       ],
       "category": "public.app-category.games"
     },
-    "icon": "build/icon.png"
+    "icon": "build/icon.png",
+    "artifactName": "R1FT-Client-${version}-${os}-${arch}.${ext}",
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "flatpak": {
+      "runtimeVersion": "25.08",
+      "baseVersion": "25.08",
+      "branch": "stable",
+      "finishArgs": [
+        "--socket=wayland",
+        "--socket=x11",
+        "--share=ipc",
+        "--device=dri",
+        "--socket=pulseaudio",
+        "--filesystem=home",
+        "--share=network",
+        "--talk-name=org.freedesktop.Notifications",
+        "--talk-name=org.freedesktop.secrets"
+      ]
+    }
   },
   "overrides": {
     "minecraft-launcher-core": {
@@ -78,5 +110,10 @@
     "node": ">=22.12.0"
   },
   "private": true,
-  "desktopName": "r1ft-client.desktop"
+  "desktopName": "r1ft-client.desktop",
+  "homepage": "https://github.com/r1fttt/rift-client",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/r1fttt/rift-client.git"
+  }
 }
