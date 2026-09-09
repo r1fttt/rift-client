@@ -1,12 +1,18 @@
 name: Build installers
 on:
   workflow_dispatch:
+    inputs:
+      mac_only:
+        description: Build only macOS installers
+        type: boolean
+        default: false
   push:
     tags: ['v*']
 permissions:
   contents: read
 jobs:
   installers:
+    if: ${{ !inputs.mac_only }}
     strategy:
       fail-fast: false
       matrix:
@@ -14,9 +20,6 @@ jobs:
           - os: windows-latest
             target: win
             args: --win nsis msi --x64
-          - os: macos-latest
-            target: mac
-            args: --mac dmg pkg --x64 --arm64
           - os: ubuntu-24.04
             target: linux
             args: --linux deb rpm snap --x64
@@ -47,7 +50,37 @@ jobs:
             release/*.deb
             release/*.rpm
             release/*.snap
+  macos:
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x64, arm64]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - run: npx electron-builder --mac dmg pkg --${{ matrix.arch }} --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - name: Verify macOS installers
+        run: |
+          for image in release/*.dmg; do hdiutil verify "$image"; done
+          for package in release/*.pkg; do pkgutil --payload-files "$package" > /dev/null; done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: R1FT-Client-mac-${{ matrix.arch }}
+          if-no-files-found: error
+          path: |
+            release/*.dmg
+            release/*.pkg
   flatpak:
+    if: ${{ !inputs.mac_only }}
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4

@@ -17,7 +17,7 @@
     "test:pack": "node tests/pack-live.cjs",
     "test:news": "npm run build && node tests/news-ui.cjs",
     "dist:win": "npm run build && electron-builder --win --x64 --publish never",
-    "dist:mac": "npm run build && electron-builder --mac --x64 --arm64 --publish never",
+    "dist:mac": "npm run build && electron-builder --mac --x64 --publish never && electron-builder --mac --arm64 --publish never",
     "dist:linux": "npm run build && electron-builder --linux --x64 --publish never",
     "dist:flatpak": "npm run build && electron-builder --linux flatpak --x64 --publish never && node scripts/flatpak-repository.cjs"
   },
