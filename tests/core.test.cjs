@@ -19,7 +19,7 @@ test('offline UUID matches Minecraft OfflinePlayer UUID and names are validated'
 });
 test('download paths reject traversal, Windows escape syntax, and reserved filenames', () => {
   for (const bad of ['../secrets', 'a/../../secrets', '/tmp/evil', 'C:/evil', 'a\\..\\evil', 'mods/CON.jar', 'a./b', 'mods/../a', '.', 'a\0b']) assert.throws(() => safePath('/tmp/game', bad), bad);
-  assert.equal(safePath('/tmp/game', 'mods/good.jar'), '/tmp/game/mods/good.jar');
+  assert.equal(safePath('/tmp/game', 'mods/good.jar'), path.resolve('/tmp/game', 'mods', 'good.jar'));
 });
 test('checksums are required and mismatches fail', () => { const data = Buffer.from('verified content'); verifyHash(data, checksum(data)); assert.throws(() => verifyHash(Buffer.from('tampered'), checksum(data))); assert.throws(() => verifyHash(data, {})); });
 test('downloads permit only trusted HTTPS hosts and do not accept userinfo or ports', () => {
