@@ -13,7 +13,9 @@ Run `npm ci` with Node 22.12 or newer, then:
 
 The EXE installer allows choosing an installation directory. MSI is an alternative installer for the same application. Install one format per machine. Windows and macOS builds are unsigned unless signing credentials are configured; macOS builds are not notarized by default.
 
-The `Build installers` GitHub Actions workflow builds Windows, Linux, and both macOS architectures. Run it from the Actions tab, or push a version tag. Download the resulting Actions artifacts. Adding this workflow with a classic GitHub token requires the `workflow` scope as well as repository access. It does not publish a GitHub release or upload to the Snap Store or Flathub.
+The `Build installers` GitHub Actions workflow builds Windows, Linux, and both macOS architectures. It runs automatically on pushes to `main`, version tags, and manual dispatches from the Actions tab. After every build succeeds, it downloads the Actions artifacts, generates SHA256SUMS, and publishes all installers to a GitHub Release. Main-branch and manual builds use `v<package-version>-build.<run-number>`; version-tag builds use that tag. A rerun updates the same release assets. The release remains a draft until every asset has uploaded successfully. You can also download individual platform artifacts from the Actions run.
+
+Only the publishing job has `contents: write`; build jobs have read-only repository access. Publishing uses GitHub's automatic workflow token, with no personal access token required. Adding the workflow through a classic personal token requires the `workflow` scope. This workflow does not upload to the Snap Store or Flathub.
 
 ## Linux prerequisites
 
