@@ -1,0 +1,40 @@
+const { _electron: electron } = require('playwright');
+const fs = require('node:fs/promises');
+const os = require('node:os');
+const path = require('node:path');
+const assert = require('node:assert/strict');
+(async () => {
+  const data = await fs.mkdtemp(path.join(os.tmpdir(), 'r1ft-news-ui-')); let app;
+  try {
+    app = await electron.launch({ args: [path.join(__dirname, '..')], env: { ...process.env, ELECTRON_RUN_AS_NODE: undefined, R1FT_TEST_DATA: data }, timeout: 30000 });
+    const page = await app.firstWindow(); await app.evaluate(({ BrowserWindow }) => { const window = BrowserWindow.getAllWindows()[0]; window.show(); window.focus(); }); const errors = []; page.on('pageerror', error => errors.push(error.message));
+    await page.locator('.news-hero').waitFor({ timeout: 60000 });
+    assert.equal(await page.title(), 'R1FT Client'); assert.match(await page.locator('.wordmark').textContent(), /R1FT.*CLIENT/);
+    await page.waitForFunction(() => !document.hidden);
+    const initial = await page.locator('.news-hero').getAttribute('data-id');
+    await page.mouse.move(5, 5);
+    const deadline = Date.now() + 16000;
+    while (Date.now() < deadline && await page.locator('.news-hero').getAttribute('data-id') === initial) await new Promise(resolve => setTimeout(resolve, 500));
+    assert.notEqual(await page.locator('.news-hero').getAttribute('data-id'), initial, 'Carousel should advance automatically');
+    await page.getByRole('button', { name: 'Pause news rotation' }).click();
+    await page.getByRole('button', { name: 'Resume news rotation' }).waitFor();
+    const paused = await page.locator('.news-hero').getAttribute('data-id'); await page.mouse.move(5, 5); await page.evaluate(() => document.activeElement.blur());
+    await new Promise(resolve => setTimeout(resolve, 8500)); assert.equal(await page.locator('.news-hero').getAttribute('data-id'), paused);
+    await page.locator('[data-action="select-news"][data-index="0"]').click();
+    await page.locator('.news-hero').click();
+    await page.locator('.post-body').waitFor({ timeout: 60000 });
+    assert.ok((await page.locator('.post-body').innerText()).length > 500, 'News opens its complete article');
+    assert.equal(await page.locator('.post-body script, .post-body [onclick], .post-body [data-action]').count(), 0);
+    await fs.mkdir(path.join(__dirname, '../.test-output'), { recursive: true });
+    await page.screenshot({ path: path.join(__dirname, '../.test-output/news-post.png') });
+    await page.getByRole('button', { name: 'Close dialog' }).click();
+    await page.getByRole('button', { name: 'Next news', exact: true }).click();
+    assert.match(await page.locator('.news-hero').getAttribute('data-id'), /^patch:/);
+    await page.locator('.news-hero').click(); await page.locator('.post-body').waitFor({ timeout: 60000 });
+    assert.ok(await page.locator('.post-body h1, .post-body h2').count());
+    await page.getByRole('button', { name: 'Close dialog' }).click();
+    await page.screenshot({ path: path.join(__dirname, '../.test-output/r1ft-home.png') });
+    assert.deepEqual(errors, []);
+    console.log('PASS: R1FT branding, live Mojang feeds, automatic cycling, pause/manual navigation, full news article and formatted patch-note reader.');
+  } finally { await app?.close(); await fs.rm(data, { recursive: true, force: true }); }
+})().catch(error => { console.error(error); process.exitCode = 1; });
