@@ -1,18 +1,13 @@
 name: Build installers
 on:
   workflow_dispatch:
-    inputs:
-      mac_only:
-        description: Build only macOS installers
-        type: boolean
-        default: false
   push:
+    branches: [main]
     tags: ['v*']
 permissions:
   contents: read
 jobs:
   installers:
-    if: ${{ !inputs.mac_only }}
     strategy:
       fail-fast: false
       matrix:
@@ -22,7 +17,7 @@ jobs:
             args: --win nsis msi --x64
           - os: ubuntu-24.04
             target: linux
-            args: --linux deb rpm snap --x64
+            args: --linux AppImage deb rpm snap --x64
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -50,6 +45,7 @@ jobs:
             release/*.deb
             release/*.rpm
             release/*.snap
+            release/*.AppImage
   macos:
     runs-on: macos-latest
     strategy:
@@ -80,7 +76,6 @@ jobs:
             release/*.dmg
             release/*.pkg
   flatpak:
-    if: ${{ !inputs.mac_only }}
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -101,3 +96,26 @@ jobs:
           name: R1FT-Client-flatpak
           if-no-files-found: error
           path: release/*.flatpak
+  publish:
+    name: Publish GitHub Release
+    needs: [installers, macos, flatpak]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: R1FT-Client-*
+          merge-multiple: true
+          path: release-assets
+      - name: Publish installers and checksums
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          BUILD_SHA: ${{ github.sha }}
+          BUILD_REF_TYPE: ${{ github.ref_type }}
+          BUILD_REF_NAME: ${{ github.ref_name }}
+          BUILD_NUMBER: ${{ github.run_number }}
+          BUILD_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: bash scripts/publish-release.sh
