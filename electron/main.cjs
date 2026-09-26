@@ -12,6 +12,8 @@ const { Modrinth, LOADERS } = require('./modrinth.cjs');
 const runtime = require('./runtime.cjs');
 const { offlineAuth, publicAccount, safePath, scrubLog } = require('./security.cjs');
 
+const sessionStorage = require('./session-storage.cjs');
+sessionStorage.configurePasswordStore(app);
 app.setName('R1FT Client');
 // Keep existing installations and encrypted account records available after the rename.
 const legacyData = path.join(app.getPath('appData'), 'XViper Launcher');
@@ -30,16 +32,13 @@ function log(value) {
   if (window && !window.isDestroyed()) window.webContents.send('launcher:log', line);
 }
 function state() { return { ...store.public(), status, running: running?.id || null, totalMemory: Math.floor(os.totalmem() / 1024 / 1024), secureStorage: secure() }; }
-function secure() { return safeStorage.isEncryptionAvailable() && (process.platform !== 'linux' || safeStorage.getSelectedStorageBackend() !== 'basic_text'); }
+function secure() { return sessionStorage.encryptionAvailable(safeStorage); }
 function saveSession(account, xbox) {
-  const token = xbox.save(); sessions.set(account.id, token);
-  if (secure()) account.refresh = safeStorage.encryptString(token).toString('base64');
-  else delete account.refresh;
+  sessionStorage.saveSession(account, xbox.save(), sessions, safeStorage);
 }
 async function authorize(account) {
   if (account.type === 'offline') return offlineAuth(account.name);
-  const token = sessions.get(account.id) || (account.refresh && secure() ? safeStorage.decryptString(Buffer.from(account.refresh, 'base64')) : null);
-  if (!token) throw new Error('Sign in to this Microsoft account again from Accounts.');
+  const token = sessionStorage.readSession(account, sessions, safeStorage);
   let xbox;
   try { xbox = await new Auth('select_account').refresh(token); }
   catch { throw new Error('Your Microsoft session expired. Sign in again from Accounts.'); }
